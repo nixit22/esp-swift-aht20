@@ -1,0 +1,12 @@
+name: esp-swift-aht20
+version: "0.1.0"
+description: "AHT20 temperature & humidity sensor driver for Swift"
+url: "https://github.com/nixit22/esp-swift-aht20"
+dependencies:
+  idf: ">=5.5"
+  esp-swift-platform:
+    git: "https://github.com/nixit22/esp-swift-platform.git"
+  esp-swift-i2c:
+    git: "https://github.com/nixit22/esp-swift-i2c.git"
+  esp-swift-support:
+    git: "https://github.com/nixit22/esp-swift-support.git"
