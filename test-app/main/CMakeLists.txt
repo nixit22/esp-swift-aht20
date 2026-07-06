@@ -25,7 +25,7 @@ idf_component_register(
         "main.swift"
         "TestAHT20.swift"
     INCLUDE_DIRS "."
-    REQUIRES esp-swift-aht20 esp-swift-gpio esp-swift-i2c esp-swift-platform esp-swift-support
+    REQUIRES esp-swift-aht20 esp-swift-gpio
 )
 
 swift_configure(
