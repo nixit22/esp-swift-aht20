@@ -1,31 +1,23 @@
 # SwiftAHT20
 
-SwiftAHT20 is a pure-Swift driver for the AHT20 temperature and humidity sensor,
-built on top of [SwiftI2C](../SwiftI2C).
+Pure-Swift driver for the AHT20 temperature/humidity sensor, built on top of [SwiftI2C](../esp-swift-i2c). Swift module name: **`AHT20`**.
 
-## Features
+Depends on: `SwiftPlatform`, `SwiftI2C`, `SwiftSupport`.
 
-- One-shot temperature and relative-humidity readings.
-- Automatic calibration check / initialization on first use.
-- Soft-reset support.
-- ESP-IDF errors surfaced as Swift typed throws (`throws(Error)`).
-
-## API
-
-### `AHT20`
+## Usage
 
 ```swift
+import AHT20
+
+let bus = I2CMasterBus(i2cPort: I2C_NUM_0, sdaIoNum: GPIO_NUM_6, sclIoNum: GPIO_NUM_7)
 let sensor = AHT20(i2cMasterBus: bus)
+try sensor.setup()
+let (temperature, humidity) = try sensor.read()
+// No explicit cleanup — deinit handles it.
+// Declare bus before sensor so Swift destroys them in reverse order (sensor first) — required IDF order.
 ```
 
-| Method | Description |
-|---|---|
-| `init(i2cMasterBus:)` | Register the sensor on the given I2C master bus (address `0x38`, 100 kHz). |
-| `setup()` | Verify calibration; initialize the sensor if needed. Call once after construction. |
-| `reset()` | Soft-reset the sensor and re-initialize. |
-| `read() -> (temperature: Float, humidity: Float)` | Trigger a measurement and return °C / %RH. |
-
-`AHT20` is `~Copyable` — no explicit cleanup call is needed; the underlying I2C device is removed automatically in `deinit`. The bus itself is not touched.
+See [`CLAUDE.md`](CLAUDE.md) for full API details and non-obvious patterns.
 
 ## License
 
