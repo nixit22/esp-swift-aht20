@@ -75,19 +75,24 @@ public struct AHT20: ~Copyable {
         // Command 0xAC, parameter 0x33, 0x00
         try device.transmit(data: [Registers.measure.rawValue, 0x33, 0x00], timeoutMs: 100)
 
-        // Wait for measurement to complete (80ms)
-        vTaskDelay(.init(ms: 80))
+        // Datasheet: typical conversion time 75-80ms, no hard max given. Wait the
+        // typical time, then poll the busy bit a few times instead of a single
+        // fixed delay so a slow conversion doesn't fail the whole read.
+        vTaskDelay(.init(ms: 75))
 
         // Read 7 bytes: state, humidity[19:12], humidity[11:4], humidity[3:0] | temp[19:16],
         // temp[15:8], temp[7:0], CRC8.
-        let data = try device.receive(length: 7, timeoutMs: 100)
-
-        let status = data[0]
-        if (status & 0x80) != 0 {
-            log.w("AHT20 busy")
-            throw Error.espError(ESP_ERR_TIMEOUT)
+        var data: [UInt8] = try device.receive(length: 7, timeoutMs: 100)
+        var attempts = 0
+        while (data[0] & 0x80) != 0 {
+            attempts += 1
+            if attempts == 5 {
+                log.w("AHT20 busy")
+                throw Error.espError(ESP_ERR_TIMEOUT)
+            }
+            vTaskDelay(.init(ms: 5))
+            data = try device.receive(length: 7, timeoutMs: 100)
         }
-
         if crc8(data.prefix(6)) != data[6] {
             log.w("AHT20 CRC mismatch")
             throw Error.espError(ESP_ERR_INVALID_CRC)
