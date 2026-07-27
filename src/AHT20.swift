@@ -52,7 +52,7 @@ public struct AHT20: ~Copyable {
         // Read status. AHT20 returns the status byte as the first byte of any read,
         // so a 1-byte read with no preceding command is the documented way to get it.
         let status = try device.receive(length: 1, timeoutMs: 100)[0]
-        if (status & 0x08) == 0 {
+        if (status & 0x18) != 0x18 {
             log.i("AHT20 not calibrated, initializing")
             try device.transmit(data: [Registers.initCmd.rawValue, 0x08, 0x00], timeoutMs: 100)
             vTaskDelay(.init(ms: 10))
