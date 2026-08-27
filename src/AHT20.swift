@@ -44,7 +44,7 @@ public struct AHT20: ~Copyable {
         }
     }
 
-    public func setup() throws(Error) {
+    public func setup() throws(PlatformError) {
         log.d("Setting up AHT20")
         // Wait 40ms after power up before reading
         vTaskDelay(.init(ms: 40))
@@ -60,20 +60,20 @@ public struct AHT20: ~Copyable {
             status = try device.receive(length: 1, timeoutMs: 100)[0]
             if (status & 0x18) != 0x18 {
                 log.w("AHT20 calibration failed")
-                throw Error.espError(ESP_ERR_INVALID_STATE)
+                throw PlatformError.espError(ESP_ERR_INVALID_STATE)
             }
         }
         log.d("AHT20 calibrated")
     }
 
-    public func reset() throws(Error) {
+    public func reset() throws(PlatformError) {
         log.d("Resetting AHT20")
         try device.transmit(data: [Registers.reset.rawValue], timeoutMs: 100)
         vTaskDelay(.init(ms: 20))
         try setup()
     }
 
-    public func read() throws(Error) -> (temperature: Float, humidity: Float) {
+    public func read() throws(PlatformError) -> (temperature: Float, humidity: Float) {
         log.d("Reading AHT20 sensor data")
 
         // Trigger measurement
@@ -93,14 +93,14 @@ public struct AHT20: ~Copyable {
             attempts += 1
             if attempts == 5 {
                 log.w("AHT20 busy")
-                throw Error.espError(ESP_ERR_TIMEOUT)
+                throw PlatformError.espError(ESP_ERR_TIMEOUT)
             }
             vTaskDelay(.init(ms: 5))
             data = try device.receive(length: 7, timeoutMs: 100)
         }
         if crc8(data.prefix(6)) != data[6] {
             log.w("AHT20 CRC mismatch")
-            throw Error.espError(ESP_ERR_INVALID_CRC)
+            throw PlatformError.espError(ESP_ERR_INVALID_CRC)
         }
 
         // Humidity is 20-bit: byte1, byte2, byte3[7:4]
