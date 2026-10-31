@@ -46,8 +46,9 @@ public struct AHT20: ~Copyable {
 
     public func setup() throws(PlatformError) {
         log.d("Setting up AHT20")
-        // Wait 40ms after power up before reading
-        vTaskDelay(.init(ms: 40))
+        // Datasheet: wait 40 ms after power up before reading. Task.delay() can return up to two
+        // tick periods early (10 ms each at 100 Hz): ask for the minimum + one tick period.
+        Task.delay(ms: 50)
 
         // Read status. AHT20 returns the status byte as the first byte of any read,
         // so a 1-byte read with no preceding command is the documented way to get it.
@@ -55,7 +56,8 @@ public struct AHT20: ~Copyable {
         if (status & 0x18) != 0x18 {
             log.i("AHT20 not calibrated, initializing")
             try device.transmit(data: [Registers.initCmd.rawValue, 0x08, 0x00], timeoutMs: 100)
-            vTaskDelay(.init(ms: 10))
+            // Datasheet: wait 10 ms after the init command (+ one tick period, see above)
+            Task.delay(ms: 20)
 
             status = try device.receive(length: 1, timeoutMs: 100)[0]
             if (status & 0x18) != 0x18 {
@@ -69,7 +71,8 @@ public struct AHT20: ~Copyable {
     public func reset() throws(PlatformError) {
         log.d("Resetting AHT20")
         try device.transmit(data: [Registers.reset.rawValue], timeoutMs: 100)
-        vTaskDelay(.init(ms: 20))
+        // Datasheet: soft reset takes at most 20 ms (+ one tick period, see setup())
+        Task.delay(ms: 30)
         try setup()
     }
 
@@ -80,10 +83,10 @@ public struct AHT20: ~Copyable {
         // Command 0xAC, parameter 0x33, 0x00
         try device.transmit(data: [Registers.measure.rawValue, 0x33, 0x00], timeoutMs: 100)
 
-        // Datasheet: typical conversion time 75-80ms, no hard max given. Wait the
-        // typical time, then poll the busy bit a few times instead of a single
-        // fixed delay so a slow conversion doesn't fail the whole read.
-        vTaskDelay(.init(ms: 75))
+        // Datasheet: wait 80 ms for the conversion (+ one tick period, see setup()), no hard max
+        // given. Then poll the busy bit a few times instead of a single fixed delay so a slow
+        // conversion doesn't fail the whole read.
+        Task.delay(ms: 90)
 
         // Read 7 bytes: state, humidity[19:12], humidity[11:4], humidity[3:0] | temp[19:16],
         // temp[15:8], temp[7:0], CRC8.
@@ -95,7 +98,9 @@ public struct AHT20: ~Copyable {
                 log.w("AHT20 busy")
                 throw PlatformError.espError(ESP_ERR_TIMEOUT)
             }
-            vTaskDelay(.init(ms: 5))
+            // Not a spec minimum, but below one tick period this would only yield and burn
+            // all the retries back to back
+            Task.delay(ms: 10)
             data = try device.receive(length: 7, timeoutMs: 100)
         }
         if crc8(data.prefix(6)) != data[6] {
